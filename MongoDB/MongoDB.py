@@ -19,6 +19,33 @@ def polacz_z_baza():
     except:
         print("B³¹d ³¹czenia siê z baz¹")
         sys.exit()
+
+def wyszukaj(client):
+    kolekcja=int(input(f"Wybierz czego szukasz: \n1.Zawodnik \n2.Dru¿yna \n3.Mecze\n"))
+    if kolekcja==1:
+        nr=int(input("Podaj nr zawodnika: "))
+        nazwa=input("Podaj nazwê dru¿yny: ")
+        result= client["Futbol"]["Zawodnicy"].find({"Nr Zawodnika": nr, "Dru¿yna" : nazwa})
+    elif kolekcja==2:
+        nazwa=input("Podaj nazwê dru¿yny: ")
+        result = client["Futbol"]["Druzyny"].find({"Nazwa": nazwa})
+    elif kolekcja==3:
+        print("Aby wyszukaæ wszystie mecze, nie wpisuj daty, wciœnij enter")
+        data=input("Podaj datê meczu: ")
+        druzyna=input("Podaj dru¿ynê: ")
+        if data=="":
+            result = client["Futbol"]["Mecze"].aggregate([{ '$match': { '$or': [ { 'D_Domowa': { '$eq': druzyna } }, { 'D_Goscie': { '$eq': druzyna } } ] } }])
+        else:
+            result = client["Futbol"]["Mecze"].aggregate([{ '$match': { '$or': [ { 'D_Domowa': { '$eq': druzyna } }, { 'D_Goscie': { '$eq': druzyna } } ], "Data": {"$eq": data} } }])
+    else: 
+        print("Wybrano z³¹ akcjê")
+    for x in result:
+        print(x)
+
+           
+
+        
+   
 def pozycja_druzyna(client):
     druzyna=input("Podaj druzynê: ")
     pozycja=input("Podaj pozycjê: ")
@@ -63,8 +90,7 @@ def rozegrane_mecze_ligi(client):
 def punktowi_zawodnicy(client):
     data=input("Podaj datê meczu: ")
     druzyna=input("Podaj dru¿ynê domow¹: ")
-    result = client["Futbol"]["Mecze"].aggregate([ { '$addFields': { 'Data': { '$dateToString': { 'format': '%Y-%m-%d', 'date': '$Data' } } } },
-                                                 { '$match': { 'Data': '2022-04-09', 'D_Domowa': 'Wataha Zielona Góra' } } ])
+    result = client["Futbol"]["Mecze"].aggregate([{ '$match': { 'Data': data , 'D_Domowa': druzyna } } ])
     print("Zawodnicy i ich punkty:")
     for x in result:
         for y in x['Punkty_Zawodnicy_Domowa']:
@@ -79,13 +105,15 @@ def punktowi_zawodnicy(client):
                 print(y["Typ"]+" - "+z["Imiê"]+" "+z["Nazwisko"]+ " - liczba punktów: "+str(y['Liczba']))
     
 def menu_admin():
-    print("1.Wypisz wszystkich zawodników z dru¿yny, graj¹cych na wybranej pozycji")
-    print("2.Wypisz ilu zawodników gra na pozycji w dru¿ynie")
-    print("3.Wypisz wygrane mecze dru¿yny")
-    print("4.Wypisz rozegrane mecze danej ligii")
-    print("5.Zawodnicy, którze zdobyli punkty w meczu")
-    print("6.Dodaj dokument do dowolnej kolekcji")
-    print("7.Edutuj istj¹cy dokument")
+    
+    print("1.Wyszukaj zawodnika, dru¿yne lub mecz")
+    print("2.Wypisz wszystkich zawodników z dru¿yny, graj¹cych na wybranej pozycji")
+    print("3.Wypisz ilu zawodników gra na pozycji w dru¿ynie")
+    print("4.Wypisz wygrane mecze dru¿yny")
+    print("5.Wypisz rozegrane mecze danej ligii")
+    print("6.Zawodnicy, którze zdobyli punkty w meczu")
+    print("7.Dodaj dokument do dowolnej kolekcji")
+    print("8.Edutuj istniej¹cy dokument")
     print("10.Zakoñcz")
     return int(input("Wybierz akcjê: "))        
 def menu_zawodnik():
@@ -104,14 +132,16 @@ if client.server_info()['ok']==1 and uzytkownik=="python":
         wybor=menu_admin()
         clear()
         if wybor==1:
+            wyszukaj(client)
+        elif wybor==2:
             pozycja_druzyna(client)
-        elif wybor ==2:
+        elif wybor ==3:
             pozycja_druzyna_zlicz(client)
-        elif wybor==3:
-            wygrane_mecze(client)
         elif wybor==4:
-            rozegrane_mecze_ligi(client)
+            wygrane_mecze(client)
         elif wybor==5:
+            rozegrane_mecze_ligi(client)
+        elif wybor==6:
             punktowi_zawodnicy(client)
         elif wybor==10:
             break
@@ -122,7 +152,7 @@ if client.server_info()['ok']==1 and uzytkownik=="zawodnik":
         wybor=menu_zawodnik()
         clear()
         if wybor==1:
-            pozycja_druzyna(client)
+            wyszukaj(client)
         elif wybor ==2:
             pozycja_druzyna_zlicz(client)
         elif wybor==3:
