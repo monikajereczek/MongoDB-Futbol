@@ -3,6 +3,9 @@
 from pymongo import MongoClient
 import sys
 import os
+import string
+
+import pymongo
 
 def clear():
     os.system('cls')
@@ -19,9 +22,8 @@ def polacz_z_baza():
     except:
         print("B³¹d ³¹czenia siê z baz¹")
         sys.exit()
-
 def wyszukaj(client):
-    kolekcja=int(input(f"Wybierz czego szukasz: \n1.Zawodnik \n2.Dru¿yna \n3.Mecze\n"))
+    kolekcja=int(input(f"Wybierz, czego szukasz: \n1.Zawodnik \n2.Dru¿yna \n3.Mecze\n"))
     if kolekcja==1:
         nr=int(input("Podaj nr zawodnika: "))
         nazwa=input("Podaj nazwê dru¿yny: ")
@@ -41,11 +43,6 @@ def wyszukaj(client):
         print("Wybrano z³¹ akcjê")
     for x in result:
         print(x)
-
-           
-
-        
-   
 def pozycja_druzyna(client):
     druzyna=input("Podaj druzynê: ")
     pozycja=input("Podaj pozycjê: ")
@@ -81,9 +78,8 @@ def rozegrane_mecze_ligi(client):
     liga=input("Podaj Ligê: ")
     result = client["Futbol"]["Mecze"].aggregate([ { '$lookup': { 'from': 'Druzyny', 'localField': 'D_Domowa', 'foreignField': 'Nazwa', 'as': 'dane' } }, 
                                                   { '$unwind': { 'path': '$dane' } }, { '$set': { 'Liga': '$dane.Liga' } }, { '$project': { 'dane': 0 } }, 
-                                                  { '$addFields': { 'Data': { '$dateToString': { 'format': '%Y-%m-%d', 'date': '$Data' } } } }, 
                                                   { '$match': { 'Liga': liga } }, { '$sort': { 'Data': 1 } } ])
-    print("Mecze, rezegrane w lidze "+liga+":")
+    print("Mecze rozegrane w lidze "+liga+":")
     for x in result:
         print(str(x['Data'])+"  "+x['D_Domowa']+" vs "+x['D_Goscie']+" wynik: " + str(x['Wynik_Domowa'])+'-'+str(x['Wynik_Goscie']))
     print()
@@ -103,27 +99,115 @@ def punktowi_zawodnicy(client):
                                                             { '$project': { '_id': 0, 'Liga': 0, 'Dru¿yna': 0 } } ])
             for z in zawodnik:
                 print(y["Typ"]+" - "+z["Imiê"]+" "+z["Nazwisko"]+ " - liczba punktów: "+str(y['Liczba']))
-    
+def dodaj_dokument(client):
+    kolekcja=int(input(f"Wybierz, do które kolekcji chcesz dodaæ: \n1.Zawodnik \n2.Dru¿yna \n3.Mecze\n"))
+    if kolekcja==1:
+        try:
+            imie=input("Podaj imiê: ")
+            nazwisko=input("Podaj nazwisko: ")
+            pozycja=input("Podaj pozycjê: ")
+            druzyna=input("Podaj druzynê: ")
+            liga=input("Podaj ligê: ")
+            inne = input("Jeœli chcesz dodaæ coœ jeszcze podaj nazwe i wartosc, oddzielajac je spacj¹: ")
+            if len(inne)>1:
+                nazwa, wartosc=inne.split()
+                if wartosc.isnumeric():
+                    wartosc=float(wartosc)
+                result=client["Futbol"]["Zawodnicy"].insert_one({"Imiê":imie, "Nazwisko":nazwisko, 
+                                                     "Pozycja":pozycja, "Dru¿yna":druzyna, "Liga":liga, 
+                                                     nazwa:wartosc})
+            else:
+                result=client["Futbol"]["Zawodnicy"].insert_one({"Imiê":imie, "Nazwisko":nazwisko, 
+                                                     "Pozycja":pozycja, "Dru¿yna":druzyna, "Liga":liga})
+            print()
+            print(result)
+        except:
+            print("Dodawanie do kolekcji nie powiod³o siê")
+    elif kolekcja==2:
+        try:
+            nazwa=input("Podaj nazwê: ")
+            liga=input("Podaj ligê: ")
+            miasto=input("Podaj miasto: ")
+            inne = input("Jeœli chcesz dodaæ coœ jeszcze, podaj nazwe i wartosc, oddzielajac je spacj¹: ")
+            if len(inne)>1:
+                nazwa, wartosc=inne.split()
+                if wartosc.isnumeric():
+                    wartosc=float(wartosc)
+                result=client["Futbol"]["Druzyny"].insert_one({"Nazwa": nazwa, "Liga":liga, 
+                                                     "Miasto":miasto,nazwa:wartosc})
+            else:
+                result=client["Futbol"]["Druzyny"].insert_one({"Nazwa": nazwa, "Liga":liga,"Miasto":miasto })
+            print()                 
+            print(result)
+        except:
+            print("Dodawanie do kolekcji nie powiod³o siê")
+    elif kolekcja==3:
+        try:
+            data=input("Podaj datê: ")
+            druzyna_domowa=input("Podaj dru¿ynê domow¹: ")
+            druzyna_goscie=input("Podaj dru¿ynê goœci: ")
+            wynik_domowa=input("Podaj wynik dru¿yny domowej: ")
+            wynik_goscie=input("Podaj wynik dru¿yny goœci: ")
+            inne = input("Jeœli chcesz dodaæ coœ jeszcze podaj nazwe i wartosc, oddzielajac je spacj¹: ")
+            if len(inne)>1:
+                nazwa, wartosc=inne.split()
+                if wartosc.isnumeric():
+                    wartosc=float(wartosc)
+                result=client["Futbol"]["Mecze"].insert_one({"Data":data, "D_Domowa":druzyna_domowa, 
+                                                     "D_Goscie":druzyna_goscie, "Wynik_Domowa":wynik_domowa, "Wynik_Goscie":wynik_goscie, 
+                                                     nazwa:wartosc})
+            else:
+                result=client["Futbol"]["Mecze"].insert_one({"Data":data, "D_Domowa":druzyna_domowa, 
+                                                     "D_Goscie":druzyna_goscie, "Wynik_Domowa":wynik_domowa, "Wynik_Goscie":wynik_goscie})
+            print()
+            print(result)
+        except:
+            print("Dodawanie do kolekcji nie powiod³o siê")
+        
+def zmien_dokument(): 
+    kolekcja=int(input(f"Wybierz kolekcjê, z której dokument chcesz aktualizowaæ: \n1.Zawodnik \n2.Dru¿yna \n3.Mecze\n"))
+    if kolekcja==1:
+        try:
+            result=client["Futbol"]["Zawodnicy"]
+        except:
+            print("Aktualizacja dokumentu nie powiod³o siê")
+    elif kolekcja==2:
+        try:
+            result=client["Futbol"]["Druzyny"]
+        except:
+            print("Aktualizacja dokumentu nie powiod³o siê")
+    elif kolekcja==3:
+        try:
+            result=client["Futbol"]["Mecze"]
+        except:
+            print("Aktualizacja dokumentu nie powiod³o siê")
+
+
+
 def menu_admin():
-    
+    print("1.Wyszukaj zawodnika, dru¿yne lub mecz")
+    print("2.Wypisz wszystkich zawodników z dru¿yny, graj¹cych na wybranej pozycji")
+    print("3.Wypisz ilu zawodników gra na pozycji w dru¿ynie")
+    print("4.Wypisz wygrane mecze dru¿yny")
+    print("5.Wypisz rozegrane mecze danej ligi")
+    print("6.Wypisz zawodników, którzy zdobyli punkty w meczu")
+    print("7.Dodaj dokument do kolekcji")
+    print("8.Aktualizuj istniej¹cy dokument")
+    print("10.Zakoñcz")
+    return int(input("Wybierz akcjê: "))  
+
+def menu_zawodnik():
     print("1.Wyszukaj zawodnika, dru¿yne lub mecz")
     print("2.Wypisz wszystkich zawodników z dru¿yny, graj¹cych na wybranej pozycji")
     print("3.Wypisz ilu zawodników gra na pozycji w dru¿ynie")
     print("4.Wypisz wygrane mecze dru¿yny")
     print("5.Wypisz rozegrane mecze danej ligii")
-    print("6.Zawodnicy, którze zdobyli punkty w meczu")
-    print("7.Dodaj dokument do dowolnej kolekcji")
-    print("8.Edutuj istniej¹cy dokument")
-    print("10.Zakoñcz")
-    return int(input("Wybierz akcjê: "))        
-def menu_zawodnik():
-    print("1.Wypisz wszystkich zawodników z dru¿yny, graj¹cych na wybranej pozycji")
-    print("2.Wypisz ilu zawodników gra na pozycji w dru¿ynie")
-    print("3.Wypisz wygrane mecze dru¿yny")
-    print("4.Wypisz rozegrane mecze danej ligii")
-    print("5.Zawodnicy, którze zdobyli punkty w meczu")
+    print("6.Wypisz zawodników, którze zdobyli punkty w meczu")
     print("10.Zakoñcz")
     return int(input("Wybierz akcjê: "))
+
+
+
 client, uzytkownik=polacz_z_baza()
 
 if client.server_info()['ok']==1 and uzytkownik=="python":
@@ -143,6 +227,10 @@ if client.server_info()['ok']==1 and uzytkownik=="python":
             rozegrane_mecze_ligi(client)
         elif wybor==6:
             punktowi_zawodnicy(client)
+        elif wybor==7:
+            dodaj_dokument(client)
+        elif wybor==8:
+            ...
         elif wybor==10:
             break
 
@@ -153,13 +241,15 @@ if client.server_info()['ok']==1 and uzytkownik=="zawodnik":
         clear()
         if wybor==1:
             wyszukaj(client)
-        elif wybor ==2:
-            pozycja_druzyna_zlicz(client)
+        elif wybor==2:
+            pozycja_druzyna(client)
         elif wybor==3:
-            wygrane_mecze(client)
+            pozycja_druzyna_zlicz(client)
         elif wybor==4:
-            rozegrane_mecze_ligi(client)
+            wygrane_mecze(client)
         elif wybor==5:
+            rozegrane_mecze_ligi(client)
+        elif wybor==6:
             punktowi_zawodnicy(client)
         elif wybor==10:
             break
